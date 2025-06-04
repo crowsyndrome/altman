@@ -80,12 +80,10 @@ void ReloadFonts(float dpiScale) {
     if (!g_iconFont && g_rubikFont) {
         LOG_ERROR("Failed to load fa-solid-900.ttf font for icons.");
     }
-    // Load emoji font
-    static ImWchar emoji_ranges[] = { 0x1, 0x1FFFF, 0 };
-    ImFontConfig emojiCfg;
-    emojiCfg.OversampleH = emojiCfg.OversampleV = 1;
+    // Load emoji font (merge with existing fonts)
+    static const ImWchar emoji_ranges[] = { 0x1, 0xFFFF, 0 };
+    ImFontConfig emojiCfg{};
     emojiCfg.MergeMode = true;
-    emojiCfg.FontBuilderFlags |= ImGuiFreeTypeBuilderFlags_LoadColor;
     io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\seguiemj.ttf", baseFontSize, &emojiCfg, emoji_ranges);
     io.FontDefault = g_rubikFont;
     // Scale ImGui style
