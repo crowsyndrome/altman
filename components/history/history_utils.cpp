@@ -7,21 +7,10 @@
 #include "history_utils.h"
 #include "log_types.h"
 
-using namespace std;
-
-string ordSuffix(int day) {
-    if (day % 10 == 1 && day % 100 != 11)
-        return "st";
-    if (day % 10 == 2 && day % 100 != 12)
-        return "nd";
-    if (day % 10 == 3 && day % 100 != 13)
-        return "rd";
-    return "th";
-}
-
-string friendlyTimestamp(const string &isoTimestamp) {
+bool isoTimestampToLocalTm(const string &isoTimestamp, tm &outTm) {
     if (isoTimestamp.size() < 19)
-        return isoTimestamp;
+        return false;
+
     tm timeStruct{};
     timeStruct.tm_year = stoi(isoTimestamp.substr(0, 4)) - 1900;
     timeStruct.tm_mon = stoi(isoTimestamp.substr(5, 2)) - 1;
@@ -37,15 +26,33 @@ string friendlyTimestamp(const string &isoTimestamp) {
 #endif
 
     if (timeValue == static_cast<time_t>(-1))
-        return isoTimestamp;
-    tm localTime_val;
+        return false;
 #ifdef _WIN32
-    localtime_s(&localTime_val, &timeValue);
-    tm *localTime = &localTime_val;
+    return localtime_s(&outTm, &timeValue) == 0;
 #else
-    tm *localTime = localtime(&timeValue);
+    tm *localPtr = localtime(&timeValue);
+    if (!localPtr)
+        return false;
+    outTm = *localPtr;
+    return true;
 #endif
-    if (!localTime)
+}
+
+using namespace std;
+
+string ordSuffix(int day) {
+    if (day % 10 == 1 && day % 100 != 11)
+        return "st";
+    if (day % 10 == 2 && day % 100 != 12)
+        return "nd";
+    if (day % 10 == 3 && day % 100 != 13)
+        return "rd";
+    return "th";
+}
+
+string friendlyTimestamp(const string &isoTimestamp) {
+    tm localTime{};
+    if (!isoTimestampToLocalTm(isoTimestamp, localTime))
         return isoTimestamp;
 
     static const char *WEEK[] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
@@ -54,31 +61,31 @@ string friendlyTimestamp(const string &isoTimestamp) {
         "December"
     };
 
-    int hour12 = localTime->tm_hour % 12;
+    int hour12 = localTime.tm_hour % 12;
     if (hour12 == 0)
         hour12 = 12;
-    bool pm = localTime->tm_hour >= 12;
+    bool pm = localTime.tm_hour >= 12;
 
     ostringstream outputStream;
-    outputStream << WEEK[localTime->tm_wday] << ", "
-            << MONTH[localTime->tm_mon] << " " << localTime->tm_mday << ordSuffix(localTime->tm_mday)
-            << ", " << hour12 << ':' << setfill('0') << setw(2) << localTime->tm_min << (pm ? " PM" : " AM");
+    outputStream << WEEK[localTime.tm_wday] << ", "
+            << MONTH[localTime.tm_mon] << " " << localTime.tm_mday << ordSuffix(localTime.tm_mday)
+            << ", " << hour12 << ':' << setfill('0') << setw(2) << localTime.tm_min << (pm ? " PM" : " AM");
     return outputStream.str();
 }
 
 string niceLabel(const LogInfo &logInfo) {
     if (!logInfo.timestamp.empty()) {
-        string hourStr = logInfo.timestamp.substr(11, 2);
-        string minute = logInfo.timestamp.substr(14, 2);
-        int hour = stoi(hourStr);
-        int hour12 = hour % 12;
-        if (hour12 == 0)
-            hour12 = 12;
-        string ampm = hour >= 12 ? "PM" : "AM";
-        ostringstream ss;
-        ss << hour12 << ':' << minute << ' ' << ampm;
-        // Entries are grouped by day and version, so omit them from the label
-        return ss.str();
+        tm localTime{};
+        if (isoTimestampToLocalTm(logInfo.timestamp, localTime)) {
+            int hour12 = localTime.tm_hour % 12;
+            if (hour12 == 0)
+                hour12 = 12;
+            string minute = (localTime.tm_min < 10 ? "0" : "") + to_string(localTime.tm_min);
+            string ampm = localTime.tm_hour >= 12 ? "PM" : "AM";
+            ostringstream ss;
+            ss << hour12 << ':' << minute << ' ' << ampm;
+            return ss.str();
+        }
     }
     return logInfo.fileName;
 }
