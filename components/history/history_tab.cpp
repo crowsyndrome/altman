@@ -23,6 +23,7 @@
 #include "../../utils/status.h"
 #include "../../ui.h"
 #include "../data.h"
+#include "../../utils/splitter.h"
 
 namespace fs = filesystem;
 using namespace ImGui;
@@ -35,6 +36,7 @@ static atomic_bool g_logs_loading{false};
 static atomic_bool g_stop_log_watcher{false};
 static once_flag g_start_log_watcher_once;
 static mutex g_logs_mtx;
+static float s_historyListWidth = 0.0f; // Initialized on first use
 
 static void refreshLogs() {
     if (g_logs_loading.load())
@@ -207,12 +209,18 @@ void RenderHistoryTab() {
 
     Separator();
 
-    float listWidth = GetContentRegionAvail().x * 0.4f;
-    float detailWidth = GetContentRegionAvail().x * 0.6f - GetStyle().ItemSpacing.x;
-    if (detailWidth <= 0)
-        detailWidth = GetContentRegionAvail().x - listWidth - GetStyle().ItemSpacing.x;
-    if (listWidth <= 0)
-        listWidth = 200;
+    float splitterThickness = 4.0f;
+    ImGuiStyle &style = GetStyle();
+    if (s_historyListWidth <= 0.0f)
+        s_historyListWidth = GetContentRegionAvail().x * 0.4f;
+    float availWidth = GetContentRegionAvail().x;
+    float detailWidth = availWidth - s_historyListWidth - splitterThickness - style.ItemSpacing.x;
+    if (detailWidth < 100.0f)
+        detailWidth = 100.0f;
+    if (s_historyListWidth < 100.0f)
+        s_historyListWidth = 100.0f;
+
+    float listWidth = s_historyListWidth;
 
     BeginChild("##HistoryList", ImVec2(listWidth, 0), true); {
         lock_guard<mutex> lk(g_logs_mtx);
@@ -251,6 +259,8 @@ void RenderHistoryTab() {
             Unindent();
     }
     EndChild();
+    SameLine();
+    Splitter(true, splitterThickness, &s_historyListWidth, &detailWidth, 100.0f, 100.0f);
     SameLine();
 
     float desiredTextIndent = 8.0f;

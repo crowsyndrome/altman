@@ -17,6 +17,7 @@
 #include "../../utils/modal_popup.h"
 #include "../../ui.h"
 #include "../servers/servers_utils.h"
+#include "../../utils/splitter.h"
 
 using namespace ImGui;
 using namespace std;
@@ -31,6 +32,7 @@ static vector<GameInfo> favoriteGamesList;
 static bool hasLoadedFavorites = false;
 static char renameBuffer[128] = "";
 static uint64_t renamingUniverseId = 0;
+static float s_gamesListWidth = 300.0f;
 
 static void RenderGameSearch();
 
@@ -171,12 +173,18 @@ void RenderGamesTab() {
 
     RenderGameSearch();
 
-    constexpr float GamesListWidth = 300.f;
+    float splitterThickness = 4.0f;
+    ImGuiStyle &style = GetStyle();
     float availableHeight = GetContentRegionAvail().y;
     float availableWidth = GetContentRegionAvail().x;
+    float detailWidth = availableWidth - s_gamesListWidth - splitterThickness - style.ItemSpacing.x;
+    if (detailWidth < 100.0f)
+        detailWidth = 100.0f;
+    if (s_gamesListWidth < 100.0f)
+        s_gamesListWidth = 100.0f;
 
-    BeginChild("##GamesList", ImVec2(GamesListWidth, availableHeight), true);
-    RenderFavoritesList(GamesListWidth, availableHeight);
+    BeginChild("##GamesList", ImVec2(s_gamesListWidth, availableHeight), true);
+    RenderFavoritesList(s_gamesListWidth, availableHeight);
     if (!favoriteGamesList.empty() && !gamesList.empty() && any_of(gamesList.begin(), gamesList.end(),
                                                                    [&](const GameInfo &gameInfo) {
                                                                        return !favoriteGameIds.contains(
@@ -184,11 +192,13 @@ void RenderGamesTab() {
                                                                    })) {
         Separator();
     }
-    RenderSearchResultsList(GamesListWidth, availableHeight);
+    RenderSearchResultsList(s_gamesListWidth, availableHeight);
     EndChild();
     SameLine();
+    Splitter(true, splitterThickness, &s_gamesListWidth, &detailWidth, 100.0f, 100.0f);
+    SameLine();
 
-    RenderGameDetailsPanel(availableWidth - GamesListWidth - GetStyle().ItemSpacing.x, availableHeight);
+    RenderGameDetailsPanel(detailWidth, availableHeight);
 }
 
 static void RenderGameDetailsPanel(float panelWidth, float availableHeight) {

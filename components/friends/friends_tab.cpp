@@ -15,6 +15,7 @@
 #include "./friends_actions.h"
 #include "../utils/webview.hpp"
 #include "../games/games_utils.h"
+#include "../../utils/splitter.h"
 
 using namespace ImGui;
 using namespace std;
@@ -39,6 +40,7 @@ static auto ICON_USER_PLUS = "\xEF\x88\xB4 ";
 static bool s_openAddFriendPopup = false;
 static char s_addFriendBuffer[64] = "";
 static atomic<bool> s_addFriendLoading{false};
+static float s_friendsListWidth = 300.0f;
 
 static inline string trim_copy(string s) {
     size_t start = s.find_first_not_of(" \t\n\r");
@@ -152,9 +154,16 @@ void RenderFriendsTab() {
         EndPopup();
     }
 
-    float friendsListWidth = 300.0f;
+    float splitterThickness = 4.0f;
+    ImGuiStyle &style = GetStyle();
+    float availWidth = GetContentRegionAvail().x;
+    float detailWidth = availWidth - s_friendsListWidth - splitterThickness - style.ItemSpacing.x;
+    if (detailWidth < 100.0f)
+        detailWidth = 100.0f;
+    if (s_friendsListWidth < 100.0f)
+        s_friendsListWidth = 100.0f;
 
-    BeginChild("##FriendsList", ImVec2(friendsListWidth, 0), true);
+    BeginChild("##FriendsList", ImVec2(s_friendsListWidth, 0), true);
     if (g_friendsLoading.load() && g_friends.empty()) {
         Text("Loading friends...");
     } else {
@@ -248,13 +257,14 @@ void RenderFriendsTab() {
         }
     }
     EndChild();
-
+    SameLine();
+    Splitter(true, splitterThickness, &s_friendsListWidth, &detailWidth, 100.0f, 100.0f);
     SameLine();
 
     float desiredTextIndent = 8.0f;
     PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 
-    BeginChild("##FriendDetails", ImVec2(0, 0), true);
+    BeginChild("##FriendDetails", ImVec2(detailWidth, 0), true);
     PopStyleVar();
 
     if (g_selectedFriendIdx < 0 || g_selectedFriendIdx >= static_cast<int>(g_friends.size())) {
