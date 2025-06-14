@@ -10,6 +10,8 @@
 #include "../utils/threading.h"
 #include "../utils/confirm.h"
 #include "../utils/app_state.h"
+#include "../utils/modal_popup.h"
+#include "accounts/account_settings_modal.h"
 #include "components.h"
 #include "data.h"
 
@@ -172,12 +174,20 @@ bool RenderMainMenu() {
                         s_cookieInputBuffer.fill('\0');
                     }
                     ImGui::EndMenu();
-                }
-                ImGui::EndMenu();
             }
+            ImGui::EndMenu();
+        }
 
-            if (!g_selectedAccountIds.empty()) {
-                Separator();
+        if (MenuItem("Account Settings")) {
+            if (g_selectedAccountIds.empty()) {
+                ModalPopup::Add("Select an account first.");
+            } else {
+                OpenAccountSettings(*g_selectedAccountIds.begin());
+            }
+        }
+
+        if (!g_selectedAccountIds.empty()) {
+            Separator();
                 char buf[64];
                 snprintf(buf, sizeof(buf), "Delete %zu Selected", g_selectedAccountIds.size());
                 PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 0.4f, 0.4f, 1.f));

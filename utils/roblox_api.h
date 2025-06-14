@@ -728,4 +728,82 @@ namespace RobloxApi {
         if (outResponse) *outResponse = resp.text;
         return resp.status_code == 200;
     }
+
+    inline string getUserDescription(const string &cookie) {
+        auto resp = HttpClient::get(
+            "https://accountinformation.roblox.com/v1/description",
+            {{"Cookie", ".ROBLOSECURITY=" + cookie}}
+        );
+        if (resp.status_code != 200)
+            return "";
+        auto j = HttpClient::decode(resp);
+        return j.value("description", "");
+    }
+
+    inline bool updateUserDescription(const string &cookie, const string &desc) {
+        string url = "https://accountinformation.roblox.com/v1/description";
+        auto csrf = HttpClient::post(url, {{"Cookie", ".ROBLOSECURITY=" + cookie}});
+        auto it = csrf.headers.find("x-csrf-token");
+        if (it == csrf.headers.end())
+            return false;
+        nlohmann::json body = {{"description", desc}};
+        auto resp = HttpClient::post(
+            url,
+            {{"Cookie", ".ROBLOSECURITY=" + cookie}, {"X-CSRF-TOKEN", it->second}},
+            body.dump());
+        return resp.status_code == 200;
+    }
+
+    inline bool getUserBirthdate(const string &cookie, int *month, int *day, int *year) {
+        auto resp = HttpClient::get(
+            "https://accountinformation.roblox.com/v1/birthdate",
+            {{"Cookie", ".ROBLOSECURITY=" + cookie}}
+        );
+        if (resp.status_code != 200)
+            return false;
+        auto j = HttpClient::decode(resp);
+        if (month) *month = j.value("birthMonth", 0);
+        if (day) *day = j.value("birthDay", 0);
+        if (year) *year = j.value("birthYear", 0);
+        return true;
+    }
+
+    inline bool updateUserBirthdate(const string &cookie, int month, int day, int year, const string &password) {
+        string url = "https://accountinformation.roblox.com/v1/birthdate";
+        auto csrf = HttpClient::post(url, {{"Cookie", ".ROBLOSECURITY=" + cookie}});
+        auto it = csrf.headers.find("x-csrf-token");
+        if (it == csrf.headers.end())
+            return false;
+        nlohmann::json body = {{"birthMonth", month}, {"birthDay", day}, {"birthYear", year}, {"password", password}};
+        auto resp = HttpClient::post(
+            url,
+            {{"Cookie", ".ROBLOSECURITY=" + cookie}, {"X-CSRF-TOKEN", it->second}},
+            body.dump());
+        return resp.status_code == 200;
+    }
+
+    inline int getUserGender(const string &cookie) {
+        auto resp = HttpClient::get(
+            "https://accountinformation.roblox.com/v1/gender",
+            {{"Cookie", ".ROBLOSECURITY=" + cookie}}
+        );
+        if (resp.status_code != 200)
+            return 0;
+        auto j = HttpClient::decode(resp);
+        return j.value("gender", 0);
+    }
+
+    inline bool updateUserGender(const string &cookie, int gender) {
+        string url = "https://accountinformation.roblox.com/v1/gender";
+        auto csrf = HttpClient::post(url, {{"Cookie", ".ROBLOSECURITY=" + cookie}});
+        auto it = csrf.headers.find("x-csrf-token");
+        if (it == csrf.headers.end())
+            return false;
+        nlohmann::json body = {{"gender", gender}};
+        auto resp = HttpClient::post(
+            url,
+            {{"Cookie", ".ROBLOSECURITY=" + cookie}, {"X-CSRF-TOKEN", it->second}},
+            body.dump());
+        return resp.status_code == 200;
+    }
 }

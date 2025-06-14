@@ -13,6 +13,7 @@
 #include "utils/status.h"
 #include "utils/modal_popup.h"
 #include "utils/confirm.h"
+#include "components/accounts/account_settings_modal.h"
 
 using namespace ImGui;
 
@@ -114,6 +115,7 @@ bool RenderUI() {
 
     End();
 
+    RenderAccountSettingsModal();
     ModalPopup::Render();
     ConfirmPopup::Render();
 

@@ -43,6 +43,7 @@ set(APP_SRC
         components/accounts/accounts_context_menu.cpp
         components/accounts/accounts_join_ui.cpp
         components/accounts/accounts_tab.cpp
+        components/accounts/account_settings_modal.cpp
         components/console/console_tab.cpp
         components/friends/friends_actions.cpp
         components/friends/friends_tab.cpp
