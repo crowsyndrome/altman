@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include <set>
+#include <unordered_map>
 #include <wrl.h>
 #include <wil/com.h>
 #include <thread>
@@ -35,6 +36,14 @@ static bool g_openCustomUrlPopup = false;
 static int g_customUrlAccountId = -1;
 static char g_customUrlBuffer[256] = "";
 
+// Cache game information for accounts when context menus are opened so we
+// don't repeatedly hit the network every frame.
+struct CachedGameInfo {
+    uint64_t placeId = 0;
+    std::string jobId;
+};
+static std::unordered_map<int, CachedGameInfo> g_cachedGameInfo;
+
 using namespace ImGui;
 using namespace std;
 
@@ -51,7 +60,25 @@ void LaunchBrowserWithCookie(const AccountData &account) {
 }
 
 void RenderAccountContextMenu(AccountData &account, const string &unique_context_menu_id) {
+    if (!IsPopupOpen(unique_context_menu_id.c_str()))
+        g_cachedGameInfo.erase(account.id);
+
     if (BeginPopupContextItem(unique_context_menu_id.c_str())) {
+        if (IsWindowAppearing()) {
+            // Refresh cached game data when the menu is opened
+            g_cachedGameInfo.erase(account.id);
+            if (account.status == "InGame") {
+                try {
+                    auto pres = RobloxApi::getPresences({stoull(account.userId)}, account.cookie);
+                    auto itp = pres.find(stoull(account.userId));
+                    if (itp != pres.end()) {
+                        g_cachedGameInfo[account.id] = {itp->second.placeId, itp->second.gameId};
+                    }
+                } catch (...) {
+                }
+            }
+        }
+
         Text("Account: %s", account.displayName.c_str());
         if (g_selectedAccountIds.contains(account.id)) {
             SameLine();
@@ -123,14 +150,10 @@ void RenderAccountContextMenu(AccountData &account, const string &unique_context
         if (account.status == "InGame") {
             uint64_t placeId = 0;
             string jobId;
-            try {
-                auto pres = RobloxApi::getPresences({stoull(account.userId)}, account.cookie);
-                auto itp = pres.find(stoull(account.userId));
-                if (itp != pres.end()) {
-                    placeId = itp->second.placeId;
-                    jobId = itp->second.gameId;
-                }
-            } catch (...) {
+            auto itCache = g_cachedGameInfo.find(account.id);
+            if (itCache != g_cachedGameInfo.end()) {
+                placeId = itCache->second.placeId;
+                jobId = itCache->second.jobId;
             }
 
             if (placeId && !jobId.empty()) {
