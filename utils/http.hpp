@@ -78,6 +78,20 @@ namespace HttpClient {
         return {r.status_code, r.text, hdrs};
     }
 
+    inline Response patch(
+        const string &url,
+        initializer_list<pair<const string, string> > headers = {},
+        const string &jsonBody = string()
+    ) {
+        cpr::Header h{headers};
+        if (!jsonBody.empty()) {
+            h["Content-Type"] = "application/json";
+        }
+        auto r = cpr::Patch(cpr::Url{url}, h, cpr::Body{jsonBody});
+        map<string, string> hdrs(r.header.begin(), r.header.end());
+        return {r.status_code, r.text, hdrs};
+    }
+
 
     inline nlohmann::json decode(const Response &response) {
         try {
