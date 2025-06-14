@@ -806,4 +806,49 @@ namespace RobloxApi {
             body.dump());
         return resp.status_code == 200;
     }
+
+    inline string getUserEmail(const string &cookie) {
+        auto resp = HttpClient::get(
+            "https://accountsettings.roblox.com/v1/email",
+            {{"Cookie", ".ROBLOSECURITY=" + cookie}}
+        );
+        if (resp.status_code != 200)
+            return "";
+        auto j = HttpClient::decode(resp);
+        return j.value("emailAddress", "");
+    }
+
+    inline bool updateUserEmail(const string &cookie, const string &password, const string &email) {
+        string url = "https://accountsettings.roblox.com/v1/email";
+        auto csrf = HttpClient::post(url, {{"Cookie", ".ROBLOSECURITY=" + cookie}});
+        auto it = csrf.headers.find("x-csrf-token");
+        if (it == csrf.headers.end())
+            return false;
+        nlohmann::json body = {{"password", password}, {"emailAddress", email}};
+        auto resp = HttpClient::patch(
+            url,
+            {{"Cookie", ".ROBLOSECURITY=" + cookie}, {"X-CSRF-TOKEN", it->second}},
+            body.dump()
+        );
+        return resp.status_code == 200;
+    }
+
+    inline bool changeUserPassword(const string &cookie, const string &currentPw, const string &newPw) {
+        string url = "https://auth.roblox.com/v2/user/passwords/change";
+        auto csrf = HttpClient::post(url, {{"Cookie", ".ROBLOSECURITY=" + cookie}});
+        auto it = csrf.headers.find("x-csrf-token");
+        if (it == csrf.headers.end())
+            return false;
+        nlohmann::json body = {
+            {"currentPassword", currentPw},
+            {"newPassword", newPw},
+            {"secureAuthenticationIntent", nlohmann::json::object()}
+        };
+        auto resp = HttpClient::post(
+            url,
+            {{"Cookie", ".ROBLOSECURITY=" + cookie}, {"X-CSRF-TOKEN", it->second}},
+            body.dump()
+        );
+        return resp.status_code == 200;
+    }
 }

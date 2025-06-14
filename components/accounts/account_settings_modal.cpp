@@ -20,7 +20,10 @@ static int s_accountId = -1;
 static char s_descBuf[512] = "";
 static int s_gender = 0;
 static int s_month = 1, s_day = 1, s_year = 2000;
-static char s_passwordBuf[128] = "";
+static char s_birthdatePwBuf[128] = "";
+static char s_emailBuf[256] = "";
+static char s_currentPwBuf[128] = "";
+static char s_newPwBuf[128] = "";
 static bool s_loading = false;
 
 void OpenAccountSettings(int accountId)
@@ -38,14 +41,17 @@ void OpenAccountSettings(int accountId)
         string desc = RobloxApi::getUserDescription(cookie);
         int g = RobloxApi::getUserGender(cookie);
         int m=0,d=0,y=0;
+        string email = RobloxApi::getUserEmail(cookie);
         RobloxApi::getUserBirthdate(cookie,&m,&d,&y);
-        MainThread::Post([desc,g,m,d,y]() {
+        MainThread::Post([desc,g,m,d,y,email]() {
             strncpy(s_descBuf, desc.c_str(), sizeof(s_descBuf)-1);
             s_descBuf[sizeof(s_descBuf)-1]='\0';
             s_gender = g;
             if(m>0) s_month=m;
             if(d>0) s_day=d;
             if(y>0) s_year=y;
+            strncpy(s_emailBuf, email.c_str(), sizeof(s_emailBuf)-1);
+            s_emailBuf[sizeof(s_emailBuf)-1]='\0';
             s_loading = false;
         });
     });
@@ -56,19 +62,26 @@ static void saveChanges(const string &cookie)
     string desc = s_descBuf;
     int g = s_gender;
     int m = s_month, d = s_day, y = s_year;
-    string pw = s_passwordBuf;
-    Threading::newThread([cookie,desc,g,m,d,y,pw]() {
+    string birthPw = s_birthdatePwBuf;
+    string email = s_emailBuf;
+    string currentPw = s_currentPwBuf;
+    string newPw = s_newPwBuf;
+    Threading::newThread([cookie,desc,g,m,d,y,birthPw,email,currentPw,newPw]() {
         bool ok1 = RobloxApi::updateUserDescription(cookie, desc);
         bool ok2 = RobloxApi::updateUserGender(cookie, g);
-        bool ok3 = pw.empty() ? true : RobloxApi::updateUserBirthdate(cookie,m,d,y,pw);
-        MainThread::Post([ok1,ok2,ok3]() {
-            if(ok1 && ok2 && ok3)
+        bool ok3 = birthPw.empty() ? true : RobloxApi::updateUserBirthdate(cookie,m,d,y,birthPw);
+        bool ok4 = email.empty() ? true : RobloxApi::updateUserEmail(cookie,currentPw,email);
+        bool ok5 = newPw.empty() ? true : RobloxApi::changeUserPassword(cookie,currentPw,newPw);
+        MainThread::Post([ok1,ok2,ok3,ok4,ok5]() {
+            if(ok1 && ok2 && ok3 && ok4 && ok5)
                 Status::Set("Account settings updated");
             else
                 Status::Error("Failed to update settings");
             s_show = false;
             s_loading = false;
-            s_passwordBuf[0]='\0';
+            s_birthdatePwBuf[0]='\0';
+            s_currentPwBuf[0]='\0';
+            s_newPwBuf[0]='\0';
         });
     });
 }
@@ -89,10 +102,13 @@ void RenderAccountSettingsModal()
             InputTextMultiline("Description", s_descBuf, IM_ARRAYSIZE(s_descBuf), ImVec2(300,80));
             const char* genderItems[] = {"Unspecified","Male","Female"};
             Combo("Gender", &s_gender, genderItems, IM_ARRAYSIZE(genderItems));
-            InputInt("Month", &s_month); 
+            InputInt("Month", &s_month);
             InputInt("Day", &s_day);
             InputInt("Year", &s_year);
-            InputText("Password", s_passwordBuf, IM_ARRAYSIZE(s_passwordBuf), ImGuiInputTextFlags_Password);
+            InputText("Birthdate Password", s_birthdatePwBuf, IM_ARRAYSIZE(s_birthdatePwBuf), ImGuiInputTextFlags_Password);
+            InputText("Email", s_emailBuf, IM_ARRAYSIZE(s_emailBuf));
+            InputText("Current Password", s_currentPwBuf, IM_ARRAYSIZE(s_currentPwBuf), ImGuiInputTextFlags_Password);
+            InputText("New Password", s_newPwBuf, IM_ARRAYSIZE(s_newPwBuf), ImGuiInputTextFlags_Password);
         }
         Spacing();
         if(Button("Save") && !s_loading)
